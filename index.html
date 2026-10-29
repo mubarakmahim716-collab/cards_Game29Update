@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>২৯ কার্ড গেম</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+:root{--cw:min(11.2vw,64px);--tw:min(13vw,60px)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Hind Siliguri',sans-serif;background:radial-gradient(circle,#1a5c38,#0d2b1d);color:#fff;display:flex;flex-direction:column;height:100dvh;overflow:hidden;user-select:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 12px;background:#0006;font-size:13px;border-bottom:1px solid #2d6a45}
+.hd b{color:#facc15}
+.box{margin:auto;width:min(92vw,420px);background:#052e1bdd;border:1px solid #2d6a45;border-radius:20px;padding:20px;text-align:center}
+.box h2{color:#facc15;font-size:19px;margin-bottom:12px}
+input{width:100%;padding:11px;margin:6px 0;border-radius:10px;border:1px solid #2d9a5a;background:#0008;color:#fff;font:inherit;text-transform:none}
+.btn{padding:10px 16px;border:0;border-radius:10px;background:#059669;color:#fff;font:700 15px inherit;font-family:inherit;cursor:pointer}
+.btn.y{background:#eab308;color:#000}.btn.r{background:#dc2626}.btn.w{width:100%;margin:4px 0}
+.btn:disabled{opacity:.35}
+#game{flex:1;display:none;flex-direction:column;min-height:0}
+#info{text-align:center;font-size:12px;color:#bbf7d0;padding-top:4px}
+#status{text-align:center;font-weight:700;color:#facc15;padding:3px 8px;font-size:15px}
+#arena{flex:1;min-height:0;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto 1fr;align-items:center;justify-items:center;padding:4px}
+#s2{grid-column:2;grid-row:1}#s1{grid-column:1;grid-row:2}#zone{grid-column:2;grid-row:2}#s3{grid-column:3;grid-row:2}
+.seat{background:#0006;border:2px solid #2d6a45;border-radius:12px;padding:3px 8px;font-size:12px;text-align:center;max-width:30vw;line-height:1.3}
+.seat.turn{border-color:#facc15;box-shadow:0 0 12px #facc15aa}
+#zone{position:relative;width:calc(var(--tw)*2.7);height:calc(var(--tw)*2.9)}
+.cd{width:var(--cw);height:calc(var(--cw)*1.42);background:#fff;border-radius:calc(var(--cw)*.12);color:#111;font-weight:700;font-size:calc(var(--cw)*.3);box-shadow:0 3px 8px #0008;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;flex:none;transition:transform .15s}
+.cd.red{color:#d11}.cd .r{position:absolute;top:2px;left:4px;line-height:1}.cd .s{font-size:1.6em}
+.cd.t{--cw:var(--tw);position:absolute}.cd.win{outline:3px solid #facc15}
+.p0{bottom:0;left:50%;transform:translateX(-50%)}.p1{left:0;top:50%;transform:translateY(-50%)}
+.p2{top:0;left:50%;transform:translateX(-50%)}.p3{right:0;top:50%;transform:translateY(-50%)}
+#panel{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;padding:4px 8px;min-height:40px}
+#panel .btn{padding:7px 10px;font-size:14px}
+#hand{display:flex;justify-content:center;gap:2px;padding:10px 3px 8px}
+.cd.ok{transform:translateY(-10px);cursor:pointer}.cd.no{opacity:.45}
+#game{position:relative}
+.av{width:34px;height:34px;border-radius:50%;background:#ffffff30;border:2px solid #fff6;display:flex;align-items:center;justify-content:center;font-size:21px;margin:0 auto 2px}
+.avc{font-size:26px;cursor:pointer;padding:2px;border-radius:50%;display:inline-block}.avc.sel{background:#facc15}
+#score{position:absolute;right:4px;top:54px;z-index:5;font-size:10px}
+#score table{border-collapse:collapse}#score th{background:#fff;color:#444;padding:1px 4px;font-weight:600}
+#score td{padding:2px 6px;text-align:center;font-weight:700;font-size:15px;border:1px solid #fff}
+.bl td{background:#bfdbfe;color:#1e3a8a}.rd td{background:#fecaca;color:#991b1b}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}.slot{border-radius:12px;padding:8px;cursor:pointer;min-height:70px}
+.t0{background:#1e40af88;border:1px solid #60a5fa}.t1{background:#991b1b88;border:1px solid #f87171}.slot small{color:#ddd}
+#panel .nb{padding:6px 9px;background:#14532d}#panel .nb.y{background:#eab308}
+</style></head><body>
+<header class="hd"><b>🎴 ২৯ কার্ড</b><span id="rc"></span><span id="sc"></span><a onclick="leave()" style="cursor:pointer">⎋ বের</a></header>
+
+<div id="lobby" class="box"><h2>রুম তৈরি বা জয়েন করুন</h2>
+<input id="pn" placeholder="আপনার নাম" maxlength="14"><div id="avs" style="margin:4px 0"></div>
+<button class="btn y w" onclick="create()">নতুন রুম তৈরি করুন</button>
+<div style="margin:8px;color:#9ca3af;font-size:13px">অথবা</div>
+<input id="code" placeholder="রুম কোড" style="text-transform:uppercase;text-align:center;letter-spacing:3px">
+<button class="btn w" onclick="join()">জয়েন করুন</button></div>
+
+<div id="wait" class="box" style="display:none"><h2>বন্ধুদের জন্য অপেক্ষা...</h2>
+<div id="wcode" style="font:700 34px monospace;letter-spacing:6px;color:#fde047;margin:6px"></div>
+<button class="btn w" onclick="copyLink()">🔗 লিংক কপি করুন</button>
+<div style="font-size:13px;margin:8px 0;color:#bbf7d0">নিজের টিম/সিট বেছে নিতে ফাঁকা সিটে (বা অন্যের সিটে) ট্যাপ করুন। একই টিমের দুজন পার্টনার।</div>
+<div class="slots" id="slots"></div>
+<button id="startbtn" class="btn y w" style="margin-top:10px" onclick="startGame()">▶ গেম শুরু করুন</button>
+<div id="wmsg" style="font-size:13px;color:#9ca3af;margin-top:6px"></div></div>
+
+<div id="game"><div id="score"></div><div id="info"></div><div id="status"></div>
+<div id="arena"><div class="seat" id="s2"></div><div class="seat" id="s1"></div><div id="zone"></div><div class="seat" id="s3"></div></div>
+<div id="panel"></div><div class="seat" id="s0" style="align-self:center"></div><div id="hand"></div></div>
+
+<script>
+firebase.initializeApp({databaseURL:"https://cards29-game-default-rtdb.firebaseio.com"});
+const db=firebase.database(),$=id=>document.getElementById(id);
+const ORD=['7','8','Q','K','10','A','9','J'],PT={J:3,9:2,A:1,'10':1},SY={S:'♠',H:'♥',D:'♦',C:'♣'};
+let room='',me=-1,S=null,ref=null,lastDeal=null,lastTbl=0,sched='';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rk=c=>c.slice(1);
+const view=id=>['lobby','wait','game'].forEach(v=>$(v).style.display=v===id?(v==='game'?'flex':'block'):'none');
+
+/* ---------- sound ---------- */
+let AC;function ac(){AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}
+addEventListener('pointerdown',()=>{try{ac()}catch(e){}},{once:true});
+function noise(t,d,f,v){const a=ac(),n=a.sampleRate*d|0,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);
+for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);const s=a.createBufferSource(),fl=a.createBiquadFilter(),g=a.createGain();
+s.buffer=b;fl.type='bandpass';fl.frequency.value=f;g.gain.value=v;s.connect(fl);fl.connect(g);g.connect(a.destination);s.start(a.currentTime+t)}
+const sndShuffle=()=>{try{for(let i=0;i<16;i++)noise(i*.07,.06,2000+Math.random()*3000,.6)}catch(e){}};
+const sndCard=()=>{try{noise(0,.08,1200,.8)}catch(e){}};
+
+/* ---------- room ---------- */
+const uid=localStorage.uid||(localStorage.uid=Math.random().toString(36).slice(2,10));
+const AVS=['🦁','🤖','👽','🐼','🦊','🐯','🐸','🦄'];let av=localStorage.av||AVS[0],selBid=15;
+function pickAv(a){av=a;localStorage.av=a;drawAv()}
+function drawAv(){$('avs').innerHTML=AVS.map(a=>`<span class="avc ${a===av?'sel':''}" onclick="pickAv('${a}')">${a}</span>`).join('')}
+function enter(code){room=code;localStorage.c29r=code;ref=db.ref('rooms/'+room);ref.on('value',s=>{S=s.val();if(!S){leave();return}render()})}
+function nm(){const n=$('pn').value.trim();if(!n)alert('নাম লিখুন!');return n}
+function create(){const n=nm();if(!n)return;const c=Math.random().toString(36).slice(2,7).toUpperCase();
+db.ref('rooms/'+c).set({phase:'waiting',host:uid,players:{0:{name:n,av,id:uid}},g0:0,g1:0}).then(()=>enter(c))}
+function join(){const n=nm(),c=$('code').value.trim().toUpperCase();if(!n||!c)return;let ok=false;
+db.ref('rooms/'+c).transaction(r=>{ok=false;if(!r)return r;const p=r.players||{};
+for(let i=0;i<4;i++)if(p[i]&&p[i].id===uid){ok=true;return r}
+if(r.phase!=='waiting')return;
+for(let i=0;i<4;i++)if(!p[i]){p[i]={name:n,av,id:uid};r.players=p;ok=true;return r}return},
+(e,k,snap)=>{if(!ok||!snap.exists())return alert('রুম পাওয়া যায়নি বা ফুল হয়ে গেছে');enter(c)})}
+function leave(){localStorage.removeItem('c29r');location.href=location.pathname}
+function copyLink(){const u=location.origin+location.pathname+'?room='+room;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>alert('লিংক কপি হয়েছে!')).catch(()=>prompt('লিংক:',u))}
+const tx=fn=>ref.transaction(r=>r?fn(r):r);
+
+/* ---------- actions ---------- */
+function sit(i){tx(r=>{if(r.phase!=='waiting')return;const p=r.players||{};let m=-1;
+for(let k=0;k<4;k++)if(p[k]&&p[k].id===uid)m=k;if(m<0||m===i)return;
+const a=p[m],b=p[i]||null;p[i]=a;p[m]=b;r.players=p;return r})}
+function startGame(){tx(r=>{if(r.phase!=='waiting'||r.host!==uid)return;const p=r.players||{};
+if([0,1,2,3].some(i=>!p[i]))return;r.phase='shuffle';return r})}
+function shuffle(){tx(r=>{if(r.phase!=='shuffle')return;const d=[];
+'SHDC'.split('').forEach(s=>ORD.forEach(k=>d.push(s+k)));
+for(let i=31;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}
+r.hands=[0,1,2,3].map(i=>d.slice(i*4,i*4+4));r.rest=d.slice(16);
+Object.assign(r,{dealer:me,turn:(me+1)%4,first:(me+1)%4,phase:'bid',bid:0,bidder:-1,passed:null,table:null,trump:null,revealed:false,p0:0,p1:0,trickNo:0,winner:null,deal:(r.deal||0)+1});return r})}
+function adv(r){const ps=r.passed||{},n=Object.keys(ps).length;
+if(r.bid>0&&(n>=3||r.bid>=28)){r.phase='trump';r.turn=r.bidder;return r}
+if(n>=4){r.phase='shuffle';r.last='সবাই পাস করেছে, আবার শাফল করুন';return r}
+let t=r.turn;do{t=(t+1)%4}while(ps['p'+t]);r.turn=t;return r}
+function bid(v){tx(r=>{if(r.phase!=='bid'||r.turn!==me||v<15||v<=(r.bid||0)||v>28)return;r.bid=v;r.bidder=me;return adv(r)})}
+function pass(){tx(r=>{if(r.phase!=='bid'||r.turn!==me)return;r.passed=r.passed||{};r.passed['p'+me]=true;return adv(r)})}
+function setTrump(s){tx(r=>{if(r.phase!=='trump'||r.bidder!==me)return;const rest=r.rest||[];
+r.hands=[0,1,2,3].map(i=>(r.hands[i]||[]).concat(rest.slice(i*4,i*4+4)));r.rest=null;
+Object.assign(r,{trump:s,phase:'play',turn:r.first,table:[],revealed:false});return r})}
+function reveal(){tx(r=>{if(r.phase!=='play'||r.turn!==me||r.revealed)return;r.revealed=true;return r})}
+function play(c){tx(r=>{if(r.phase!=='play'||r.turn!==me)return;const h=(r.hands[me]||[]).slice(),i=h.indexOf(c);if(i<0)return;
+const t=(r.table||[]).slice();if(t.length){const L=t[0].c[0];if(c[0]!==L&&h.some(x=>x[0]===L))return}
+h.splice(i,1);r.hands[me]=h;t.push({p:me,c});r.table=t;
+if(t.length<4){r.turn=(me+1)%4;return r}
+const L=t[0].c[0],s=r.revealed&&t.some(x=>x.c[0]===r.trump)?r.trump:L;let w=null,pts=0;
+t.forEach(x=>{pts+=PT[rk(x.c)]||0;if(x.c[0]===s&&(!w||ORD.indexOf(rk(x.c))>ORD.indexOf(rk(w.c))))w=x});
+const k='p'+w.p%2;r[k]=(r[k]||0)+pts;r.winner=w.p;r.trickNo=(r.trickNo||0)+1;r.phase='trickEnd';return r})}
+function next(d,n){tx(r=>{if(r.phase!=='trickEnd'||r.deal!==d||r.trickNo!==n)return;r.table=null;
+if(n>=8){const bt=r.bidder%2,got=bt?r.p1:r.p0,ok=got>=r.bid;r['g'+bt]=(r['g'+bt]||0)+(ok?1:-1);
+r.last=`${r.players[r.bidder].name} (${r.bid} বিড) ${got} পয়েন্ট পেয়ে ${ok?'জিতেছেন ✅':'হেরেছেন ❌'}`;r.phase='shuffle'}
+else{r.phase='play';r.turn=r.winner;r.table=[]}return r})}
+
+/* ---------- render ---------- */
+const cardEl=(c,cls)=>{const d=document.createElement('div');d.className='cd '+(cls||'')+(/[HD]/.test(c[0])?' red':'');
+d.innerHTML=`<span class="r">${rk(c)}</span><span class="s">${SY[c[0]]}</span>`;return d};
+function render(){if(!S)return;const P=[0,1,2,3].map(i=>(S.players||{})[i]||null),ph=S.phase;
+me=P.findIndex(p=>p&&p.id===uid);$('rc').textContent='রুম: '+room;
+if(me<0){alert('আপনি এই রুমে নেই');return leave()}
+const A=i=>`<div class="av">${(P[i]&&P[i].av)||'🦁'}</div>`;
+if(ph==='waiting'){view('wait');$('wcode').textContent=room;
+$('slots').innerHTML='<b style="color:#93c5fd">টিম ১</b><b style="color:#fca5a5">টিম ২</b>'+[0,1,2,3].map(i=>{const p=P[i];
+return `<div class="slot t${i%2}" onclick="sit(${i})">${p?A(i)+'<b>'+esc(p.name)+(i===me?' (আমি)':'')+'</b>':'<div class="av">＋</div><small>ফাঁকা, বসুন</small>'}</div>`}).join('');
+const full=P.every(Boolean),sb=$('startbtn');sb.style.display=S.host===uid?'block':'none';sb.disabled=!full;
+$('wmsg').textContent=full?(S.host===uid?'':'হোস্ট গেম শুরু করবেন'):'৪ জন পূর্ণ হলে শুরু করা যাবে';return}
+view('game');const hands=S.hands||[],nmz=i=>esc(P[i].name);
+if(lastDeal===null)lastDeal=S.deal||0;
+if((S.deal||0)!==lastDeal){lastDeal=S.deal||0;sndShuffle()}
+const tbl=S.table||[];if(tbl.length>lastTbl)sndCard();lastTbl=tbl.length;
+const my=ph==='bid'||ph==='play'?S.turn===me:false,ps=S.passed||{};
+/* score table: my team (blue) first */
+const mt=me%2;$('score').innerHTML='<table><tr><th>স্কোর</th><th>বিড</th><th>পয়েন্ট</th></tr>'+[mt,1-mt].map((t,k)=>{
+const b=S.bidder>=0&&S.bidder%2===t&&ph!=='shuffle'?S.bid:'–';
+return `<tr class="${k?'rd':'bl'}"><td>${S['g'+t]||0}</td><td>${b}</td><td>${S['p'+t]||0}</td></tr>`}).join('')+'</table>';
+for(let i=0;i<4;i++){const e=$('s'+(i-me+4)%4);let tg=[];
+if(S.dealer===i)tg.push('🔀');
+if(ph==='bid'){if(ps['p'+i])tg.push('পাস');else if(S.bidder===i)tg.push('বিড '+S.bid)}
+else if(S.bidder===i&&ph!=='shuffle'){tg.push('👑 '+S.bid);
+if(S.trump)tg.push(`<span style="font-size:17px">${S.revealed||i===me?SY[S.trump]:'🂠'}</span>`)}
+e.innerHTML=`${A(i)}<b>${nmz(i)}${i===me?' (আমি)':''}</b><br><small>${tg.join(' ')||'&nbsp;'}</small>`;
+e.classList.toggle('turn',(ph==='bid'||ph==='play')&&S.turn===i||ph==='trump'&&S.bidder===i)}
+$('info').textContent=ph==='shuffle'||ph==='bid'?'':`বিড ${S.bid} (${P[S.bidder]?.name})`;
+$('status').innerHTML={shuffle:esc(S.last||'যে কেউ শাফল চাপুন'),bid:my?`আপনার বিডের পালা (সর্বোচ্চ ${S.bid||'—'})`:`${nmz(S.turn)} বিড করছেন...`,
+trump:S.bidder===me?'৪টা কার্ড দেখে ট্রাম্প বেছে নিন':`${nmz(S.bidder)} ট্রাম্প বাছাই করছেন...`,
+play:my?'আপনার চাল!':`${nmz(S.turn)}-এর চাল...`,trickEnd:`${nmz(S.winner)} হ্যান্ড জিতেছেন`}[ph];
+const z=$('zone');z.innerHTML='';tbl.forEach(t=>{const e=cardEl(t.c,'t p'+(t.p-me+4)%4);if(ph==='trickEnd'&&t.p===S.winner)e.classList.add('win');z.appendChild(e)});
+const pn=$('panel');let h='';
+if(ph==='shuffle')h='<button class="btn y" onclick="shuffle()">🔀 শাফল করুন</button>';
+else if(ph==='bid'&&my){if(selBid<=(S.bid||0))selBid=(S.bid||0)+1;if(selBid<15)selBid=15;
+for(let v=15;v<=28;v++)h+=`<button class="btn nb ${v===selBid?'y':''}" ${v<=(S.bid||0)?'disabled':''} onclick="selBid=${v};render()">${v}</button>`;
+h+=`<div style="width:100%"></div><button class="btn r" onclick="pass()">পাস</button><button class="btn y" onclick="bid(selBid)">বিড ${selBid}</button>`}
+else if(ph==='trump'&&S.bidder===me)h=Object.keys(SY).map(s=>`<button class="btn y" onclick="setTrump('${s}')" style="font-size:22px">${SY[s]}</button>`).join('');
+const mine=(hands[me]||[]).slice();
+const L=tbl.length?tbl[0].c[0]:null,hasL=L&&mine.some(c=>c[0]===L);
+if(ph==='play'&&my&&!S.revealed&&L&&!hasL)h+='<button class="btn y" onclick="reveal()">👁 ট্রাম্প দেখান</button>';
+pn.innerHTML=h;
+const so='SHCD';mine.sort((a,b)=>so.indexOf(a[0])-so.indexOf(b[0])||ORD.indexOf(rk(b))-ORD.indexOf(rk(a)));
+const hd=$('hand');hd.innerHTML='';
+mine.forEach(c=>{const ok=ph==='play'&&my&&(!hasL||c[0]===L),e=cardEl(c,ph==='play'&&my?(ok?'ok':'no'):'');if(ok)e.onclick=()=>play(c);hd.appendChild(e)});
+if(ph==='trickEnd'){const k=S.deal+'-'+S.trickNo;if(sched!==k){sched=k;const d=S.deal,n=S.trickNo;setTimeout(()=>next(d,n),1800+Math.random()*300)}}}
+
+/* ---------- start ---------- */
+const q=new URLSearchParams(location.search).get('room');if(q)$('code').value=q;drawAv();
+const sv=localStorage.c29r;if(sv){view('wait');enter(sv)}else view('lobby');
+</script></body></html>
