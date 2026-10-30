@@ -148,7 +148,7 @@ $('slots').innerHTML='<b style="color:#93c5fd">টিম ১</b><b style="color:
 return `<div class="slot t${i%2}" onclick="sit(${i})">${p?A(i)+'<b>'+esc(p.name)+(i===me?' (আমি)':'')+'</b>':'<div class="av">＋</div><small>ফাঁকা, বসুন</small>'}</div>`}).join('');
 const full=P.every(Boolean),sb=$('startbtn');sb.style.display=S.host===uid?'block':'none';sb.disabled=!full;
 $('wmsg').textContent=full?(S.host===uid?'':'হোস্ট গেম শুরু করবেন'):'৪ জন পূর্ণ হলে শুরু করা যাবে';return}
-view('game');const hands=S.hands||[],nmz=i=>esc(P[i].name);
+view('game');const hands=S.hands||[],nmz=i=>P[i]?esc(P[i].name):"";
 if(lastDeal===null)lastDeal=S.deal||0;
 if((S.deal||0)!==lastDeal){lastDeal=S.deal||0;sndShuffle()}
 const tbl=S.table||[];if(tbl.length>lastTbl)sndCard();lastTbl=tbl.length;
