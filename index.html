@@ -70,14 +70,17 @@ input{width:100%;padding:11px;margin:6px 0;border-radius:10px;border:1px solid #
 firebase.initializeApp({databaseURL:"https://cards29-game-default-rtdb.firebaseio.com"});
 const db=firebase.database(),$=id=>document.getElementById(id);
 const ORD=['7','8','Q','K','10','A','9','J'],PT={J:3,9:2,A:1,'10':1},SY={S:'♠',H:'♥',D:'♦',C:'♣'};
-let room='',me=-1,S=null,ref=null,lastDeal=null,lastTbl=0,sched='';
+let room='',me=-1,S=null,ref=null,lastDeal=null,lastTbl=0,sched='',lastPh=null;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const rk=c=>c.slice(1);
 const view=id=>['lobby','wait','game'].forEach(v=>$(v).style.display=v===id?(v==='game'?'flex':'block'):'none');
 
 /* ---------- sound ---------- */
 let AC;function ac(){AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}
-addEventListener('pointerdown',()=>{try{ac()}catch(e){}},{once:true});
+const SFX={deal:new Audio('oxidvideos-taking-playing-card-522520.mp3'),angry:new Audio('rag-korla.mp3')};
+Object.values(SFX).forEach(a=>a.preload='auto');
+function sfx(k,fb){try{const a=SFX[k];a.currentTime=0;a.play().catch(()=>fb&&fb())}catch(e){fb&&fb()}}
+addEventListener('pointerdown',()=>{try{ac()}catch(e){}Object.values(SFX).forEach(a=>{a.muted=true;a.play().then(()=>{a.pause();a.currentTime=0;a.muted=false}).catch(()=>{a.muted=false})})},{once:true});
 function noise(t,d,f,v){const a=ac(),n=a.sampleRate*d|0,b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);
 for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);const s=a.createBufferSource(),fl=a.createBiquadFilter(),g=a.createGain();
 s.buffer=b;fl.type='bandpass';fl.frequency.value=f;g.gain.value=v;s.connect(fl);fl.connect(g);g.connect(a.destination);s.start(a.currentTime+t)}
@@ -108,15 +111,15 @@ function sit(i){tx(r=>{if(r.phase!=='waiting')return;const p=r.players||{};let m
 for(let k=0;k<4;k++)if(p[k]&&p[k].id===uid)m=k;if(m<0||m===i)return;
 const a=p[m],b=p[i]||null;p[i]=a;p[m]=b;r.players=p;return r})}
 function startGame(){tx(r=>{if(r.phase!=='waiting'||r.host!==uid)return;const p=r.players||{};
-if([0,1,2,3].some(i=>!p[i]))return;r.phase='shuffle';return r})}
-function shuffle(){tx(r=>{if(r.phase!=='shuffle')return;const d=[];
+if([0,1,2,3].some(i=>!p[i]))return;r.phase='shuffle';r.shuffler=0;return r})}
+function shuffle(){tx(r=>{if(r.phase!=='shuffle'||r.shuffler!==me)return;const d=[];
 'SHDC'.split('').forEach(s=>ORD.forEach(k=>d.push(s+k)));
 for(let i=31;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}
 r.hands=[0,1,2,3].map(i=>d.slice(i*4,i*4+4));r.rest=d.slice(16);
 Object.assign(r,{dealer:me,turn:(me+1)%4,first:(me+1)%4,phase:'bid',bid:0,bidder:-1,passed:null,table:null,trump:null,revealed:false,p0:0,p1:0,trickNo:0,winner:null,deal:(r.deal||0)+1});return r})}
 function adv(r){const ps=r.passed||{},n=Object.keys(ps).length;
 if(r.bid>0&&(n>=3||r.bid>=28)){r.phase='trump';r.turn=r.bidder;return r}
-if(n>=4){r.phase='shuffle';r.last='সবাই পাস করেছে, আবার শাফল করুন';return r}
+if(n>=4){r.phase='shuffle';r.shuffler=(r.dealer+1)%4;r.last='সবাই পাস করেছে, আবার শাফল করুন';return r}
 let t=r.turn;do{t=(t+1)%4}while(ps['p'+t]);r.turn=t;return r}
 function bid(v){tx(r=>{if(r.phase!=='bid'||r.turn!==me||v<15||v<=(r.bid||0)||v>28)return;r.bid=v;r.bidder=me;return adv(r)})}
 function pass(){tx(r=>{if(r.phase!=='bid'||r.turn!==me)return;r.passed=r.passed||{};r.passed['p'+me]=true;return adv(r)})}
@@ -133,7 +136,7 @@ t.forEach(x=>{pts+=PT[rk(x.c)]||0;if(x.c[0]===s&&(!w||ORD.indexOf(rk(x.c))>ORD.i
 const k='p'+w.p%2;r[k]=(r[k]||0)+pts;r.winner=w.p;r.trickNo=(r.trickNo||0)+1;r.phase='trickEnd';return r})}
 function next(d,n){tx(r=>{if(r.phase!=='trickEnd'||r.deal!==d||r.trickNo!==n)return;r.table=null;
 if(n>=8){const bt=r.bidder%2,got=bt?r.p1:r.p0,ok=got>=r.bid;r['g'+bt]=(r['g'+bt]||0)+(ok?1:-1);
-r.last=`${r.players[r.bidder].name} (${r.bid} বিড) ${got} পয়েন্ট পেয়ে ${ok?'জিতেছেন ✅':'হেরেছেন ❌'}`;r.phase='shuffle'}
+r.last=`${r.players[r.bidder].name} (${r.bid} বিড) ${got} পয়েন্ট পেয়ে ${ok?'জিতেছেন ✅':'হেরেছেন ❌'}`;r.phase='shuffle';r.shuffler=(r.dealer+1)%4}
 else{r.phase='play';r.turn=r.winner;r.table=[]}return r})}
 
 /* ---------- render ---------- */
@@ -150,7 +153,10 @@ const full=P.every(Boolean),sb=$('startbtn');sb.style.display=S.host===uid?'bloc
 $('wmsg').textContent=full?(S.host===uid?'':'হোস্ট গেম শুরু করবেন'):'৪ জন পূর্ণ হলে শুরু করা যাবে';return}
 view('game');const hands=S.hands||[],nmz=i=>P[i]?esc(P[i].name):"";
 if(lastDeal===null)lastDeal=S.deal||0;
-if((S.deal||0)!==lastDeal){lastDeal=S.deal||0;sndShuffle()}
+if((S.deal||0)!==lastDeal){lastDeal=S.deal||0;sndShuffle();setTimeout(()=>sfx('deal'),1300)}
+if(lastPh&&lastPh!=='trump'&&ph==='trump')sfx('angry');
+if(lastPh==='trump'&&ph==='play')sfx('deal');
+lastPh=ph;
 const tbl=S.table||[];if(tbl.length>lastTbl)sndCard();lastTbl=tbl.length;
 const my=ph==='bid'||ph==='play'?S.turn===me:false,ps=S.passed||{};
 /* score table: my team (blue) first */
@@ -163,14 +169,14 @@ if(ph==='bid'){if(ps['p'+i])tg.push('পাস');else if(S.bidder===i)tg.push('�
 else if(S.bidder===i&&ph!=='shuffle'){tg.push('👑 '+S.bid);
 if(S.trump)tg.push(`<span style="font-size:17px">${S.revealed||i===me?SY[S.trump]:'🂠'}</span>`)}
 e.innerHTML=`${A(i)}<b>${nmz(i)}${i===me?' (আমি)':''}</b><br><small>${tg.join(' ')||'&nbsp;'}</small>`;
-e.classList.toggle('turn',(ph==='bid'||ph==='play')&&S.turn===i||ph==='trump'&&S.bidder===i)}
+e.classList.toggle('turn',(ph==='bid'||ph==='play')&&S.turn===i||ph==='trump'&&S.bidder===i||ph==='shuffle'&&S.shuffler===i)}
 $('info').textContent=ph==='shuffle'||ph==='bid'?'':`বিড ${S.bid} (${P[S.bidder]?.name})`;
-$('status').innerHTML={shuffle:esc(S.last||'যে কেউ শাফল চাপুন'),bid:my?`আপনার বিডের পালা (সর্বোচ্চ ${S.bid||'—'})`:`${nmz(S.turn)} বিড করছেন...`,
+$('status').innerHTML={shuffle:(S.last?esc(S.last)+'<br>':'')+(S.shuffler===me?'এবার আপনি শাফল করুন 🔀':nmz(S.shuffler)+' শাফল করবেন...'),bid:my?`আপনার বিডের পালা (সর্বোচ্চ ${S.bid||'—'})`:`${nmz(S.turn)} বিড করছেন...`,
 trump:S.bidder===me?'৪টা কার্ড দেখে ট্রাম্প বেছে নিন':`${nmz(S.bidder)} ট্রাম্প বাছাই করছেন...`,
 play:my?'আপনার চাল!':`${nmz(S.turn)}-এর চাল...`,trickEnd:`${nmz(S.winner)} হ্যান্ড জিতেছেন`}[ph];
 const z=$('zone');z.innerHTML='';tbl.forEach(t=>{const e=cardEl(t.c,'t p'+(t.p-me+4)%4);if(ph==='trickEnd'&&t.p===S.winner)e.classList.add('win');z.appendChild(e)});
 const pn=$('panel');let h='';
-if(ph==='shuffle')h='<button class="btn y" onclick="shuffle()">🔀 শাফল করুন</button>';
+if(ph==='shuffle'&&S.shuffler===me)h='<button class="btn y" onclick="shuffle()">🔀 শাফল করুন</button>';
 else if(ph==='bid'&&my){if(selBid<=(S.bid||0))selBid=(S.bid||0)+1;if(selBid<15)selBid=15;
 for(let v=15;v<=28;v++)h+=`<button class="btn nb ${v===selBid?'y':''}" ${v<=(S.bid||0)?'disabled':''} onclick="selBid=${v};render()">${v}</button>`;
 h+=`<div style="width:100%"></div><button class="btn r" onclick="pass()">পাস</button><button class="btn y" onclick="bid(selBid)">বিড ${selBid}</button>`}
